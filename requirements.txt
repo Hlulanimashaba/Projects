@@ -8,4 +8,4 @@ io
 base64
 sqlite3
 streamlit 
-scipy 
+
