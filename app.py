@@ -68,16 +68,18 @@ st.markdown("""
         border-radius: 5px;
         cursor: pointer;
     }
-    .footer {
+   .footer {
         font-size: 12px;
-        color: #777;
+        color: black;
         position: fixed;
         bottom: 0;
-        width: 100%;
-        text-align: center;
+        left: 50%;
+        transform: translateX(-50%);
         padding: 10px;
         background-color: #f5f5f5;
         border-top: 1px solid #ddd;
+        width: 100%;
+        text-align: center;
     }
     </style>
 """, unsafe_allow_html=True)
