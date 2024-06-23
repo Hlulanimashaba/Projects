@@ -1,33 +1,32 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import sqlite3
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-import base64
-import sqlite3
-import streamlit as st
 from scipy import stats
 
-# Fetch data function remains the same
+# Function to fetch data from SQLite
 def fetch_data():
-    connection = sqlite3.connect('predict.db')
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM heart")
-    columns = [col[0] for col in cursor.description]
-    data = cursor.fetchall()
-    df = pd.DataFrame(data, columns=columns)
-    connection.close()
+    conn = sqlite3.connect('predict.db')
+    df = pd.read_sql_query("SELECT * FROM heart", conn)
+    conn.close()
     return df
 
-# Load the dataset from SQLite
+# Load dataset
 df = fetch_data()
+
+# Remove any unnamed columns
 df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
 
-# Split features and target variable
+# Split data into features and target
 X = df.drop(columns=['target'])
 y = df['target']
+
+# Split data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Feature scaling
@@ -35,7 +34,7 @@ scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-# Train the SVM model
+# Train SVM model
 svm_model = SVC(kernel='linear')
 svm_model.fit(X_train_scaled, y_train)
 
@@ -53,6 +52,7 @@ st.markdown("""
     .subheader {
         font-size: 20px;
         color: #4A90E2;
+        margin-top: 20px;
     }
     .form {
         margin-top: 20px;
@@ -71,10 +71,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Streamlit UI
 st.markdown('<div class="main">', unsafe_allow_html=True)
-
 st.markdown('<h1 class="title">Heart Disease Prediction App</h1>', unsafe_allow_html=True)
 
+# Sidebar menu
 menu = ["Home", "Explore", "Predict"]
 choice = st.sidebar.selectbox("Menu", menu)
 
@@ -84,28 +85,25 @@ if choice == "Home":
 
 elif choice == "Explore":
     st.markdown('<h2 class="subheader">Explore Data</h2>', unsafe_allow_html=True)
-    df = fetch_data()
 
     st.write("### Target Variable Distribution")
-    fig1, ax1 = plt.subplots(figsize=(7, 5), facecolor='#F6F5F4')
+    fig1, ax1 = plt.subplots(figsize=(7, 5))
     total = float(len(df))
     sns.countplot(x='target', data=df, hue='target', palette=['#4A90E2', '#FF0000'], ax=ax1, legend=False)
-    ax1.set_facecolor('#F6F5F4')
     ax1.set_xticks([0, 1])
     ax1.set_xticklabels(['No Heart Disease', 'Heart Disease'])
     for p in ax1.patches:
         height = p.get_height()
         ax1.text(p.get_x() + p.get_width() / 2., height + 3, '{:1.1f} %'.format((height / total) * 100), ha="center",
                  bbox=dict(facecolor='none', edgecolor='black', boxstyle='round', linewidth=0.5))
-    sns.despine(right=True)
-    sns.despine(offset=5, trim=True)
+    sns.despine()
     st.pyplot(fig1)
 
     st.write("### Distribution of Numerical Features")
     num_feats = ['sex', 'chol', 'trestbps', 'thalach', 'oldpeak', 'ca']
     ncol = 3
     nrow = 2
-    fig2, axes = plt.subplots(nrow, ncol, figsize=(25, 12), facecolor='#F6F5F4')
+    fig2, axes = plt.subplots(nrow, ncol, figsize=(25, 12))
     fig2.subplots_adjust(top=0.92, hspace=0.4)
 
     for i, col in enumerate(num_feats):
@@ -119,8 +117,7 @@ elif choice == "Explore":
             sns.kdeplot(data=df, x=col, hue="target", multiple="stack", palette=['#4A90E2', '#FF0000'], ax=ax)
             ax.set_ylabel("Density", fontsize=12)
         ax.set_xlabel(col.capitalize(), fontsize=12)
-        sns.despine(right=True)
-        sns.despine(offset=0, trim=False)
+        sns.despine()
         if col == 'ca':
             for p in ax.patches:
                 height = p.get_height()
@@ -132,145 +129,123 @@ elif choice == "Explore":
     st.write("### Additional Graphs")
 
     # Additional Graph 1: Reg plots of selected features
-    fig, ax = plt.subplots(1, 4, figsize=(20, 4))
+    fig3, ax3 = plt.subplots(1, 4, figsize=(20, 4))
     mypal = sns.color_palette("husl", 8)
-    sns.regplot(data=df[df['target'] == 1], x='age', y='chol', ax=ax[0], color=mypal[0], label='1')
-    sns.regplot(data=df[df['target'] == 0], x='age', y='chol', ax=ax[0], color=mypal[5], label='0')
-    sns.regplot(data=df[df['target'] == 1], x='age', y='thalach', ax=ax[1], color=mypal[0], label='1')
-    sns.regplot(data=df[df['target'] == 0], x='age', y='thalach', ax=ax[1], color=mypal[5], label='0')
-    sns.regplot(data=df[df['target'] == 1], x='age', y='trestbps', ax=ax[2], color=mypal[0], label='1')
-    sns.regplot(data=df[df['target'] == 0], x='age', y='trestbps', ax=ax[2], color=mypal[5], label='0')
-    sns.regplot(data=df[df['target'] == 1], x='age', y='oldpeak', ax=ax[3], color=mypal[0], label='1')
-    sns.regplot(data=df[df['target'] == 0], x='age', y='oldpeak', ax=ax[3], color=mypal[5], label='0')
+    sns.regplot(data=df[df['target'] == 1], x='age', y='chol', ax=ax3[0], color=mypal[0], label='1')
+    sns.regplot(data=df[df['target'] == 0], x='age', y='chol', ax=ax3[0], color=mypal[5], label='0')
+    sns.regplot(data=df[df['target'] == 1], x='age', y='thalach', ax=ax3[1], color=mypal[0], label='1')
+    sns.regplot(data=df[df['target'] == 0], x='age', y='thalach', ax=ax3[1], color=mypal[5], label='0')
+    sns.regplot(data=df[df['target'] == 1], x='age', y='trestbps', ax=ax3[2], color=mypal[0], label='1')
+    sns.regplot(data=df[df['target'] == 0], x='age', y='trestbps', ax=ax3[2], color=mypal[5], label='0')
+    sns.regplot(data=df[df['target'] == 1], x='age', y='oldpeak', ax=ax3[3], color=mypal[0], label='1')
+    sns.regplot(data=df[df['target'] == 0], x='age', y='oldpeak', ax=ax3[3], color=mypal[5], label='0')
     plt.suptitle('Reg plots of selected features')
     plt.legend()
-    st.pyplot(fig)
+    st.pyplot(fig3)
 
     # Additional Graph 2: Pairplot of numerical features
     num_feats = ['age', 'chol', 'trestbps', 'thalach', 'oldpeak', 'ca', 'target']
-    data_ = df[num_feats]
-    g = sns.pairplot(data_, hue="target", corner=True, diag_kind='hist', palette=mypal[1::4])
+    data_pairplot = df[num_feats]
+    g = sns.pairplot(data_pairplot, hue="target", corner=True, diag_kind='hist', palette=mypal[1::4])
     plt.suptitle('Pairplot: Numerical Features', fontsize=24)
-    # st.pyplot(g) # Removed to resolve the warning
+    st.pyplot(g)
 
     # Additional Graph 3: Count plots of categorical features
     cat_feats = ['sex', 'cp', 'fbs', 'restecg', 'exang', 'slope', 'thal']
-    def count_plot(data, cat_feats):    
-        L = len(cat_feats)
-        ncol= 2
-        nrow= int(np.ceil(L/ncol))
-        remove_last= (nrow * ncol) - L
-
-        fig, ax = plt.subplots(nrow, ncol, figsize=(18, 24), facecolor='#F6F5F4')    
-        fig.subplots_adjust(top=0.92)
-        ax.flat[-1].set_visible(False) 
-        plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.3, hspace=0.3)
-        i = 0
-        for row in range(nrow):
-            for col in range(ncol):
-                if i == L:
-                    break
-                sns.countplot(data=data, x=cat_feats[i], hue='target', palette=['#4A90E2', '#FF0000'], ax=ax[row, col])
-                ax[row, col].set_title(cat_feats[i].capitalize(), fontsize=14)
-                ax[row, col].set_ylabel("Count", fontsize=12)
-                ax[row, col].set_xlabel("")
-                sns.despine(right=True)
-                sns.despine(offset=0, trim=False)
-                i += 1
-        plt.suptitle('Distribution of Categorical Features', fontsize=24)
-        st.pyplot(fig)
-
-    count_plot(df, cat_feats)
+    fig4, axes4 = plt.subplots(2, 4, figsize=(20, 10))
+    axes4 = axes4.flatten()
+    for i, col in enumerate(cat_feats):
+        sns.countplot(x=col, hue='target', data=df, palette=['#4A90E2', '#FF0000'], ax=axes4[i])
+    plt.tight_layout()
+    plt.suptitle('Count plots of categorical features', y=1.02)
+    st.pyplot(fig4)
 
     # Additional Graph 4: Numerical features correlation heatmap (Pearson's)
-    df_ = df[num_feats]
-    corr = df_.corr(method='pearson')
-    mask = np.triu(np.ones_like(corr, dtype=bool))
-    f, ax = plt.subplots(figsize=(8, 5), facecolor=None)
-    cmap = sns.color_palette(mypal, as_cmap=True)
-    sns.heatmap(corr, mask=mask, cmap=cmap, vmax=1.0, vmin=-1.0, center=0, annot=True, square=False, linewidths=.5, cbar_kws={"shrink": 0.75})
-    ax.set_title("Numerical features correlation (Pearson's)", fontsize=20, y=1.05)
-    st.pyplot(f)
+    df_corr = df[num_feats].corr()
+    fig5, ax5 = plt.subplots(figsize=(8, 6))
+    sns.heatmap(df_corr, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5)
+    ax5.set_title("Numerical features correlation (Pearson's)", fontsize=20)
+    st.pyplot(fig5)
 
     # Additional Graph 5: Point-biserial correlation heatmap
-    feats_ = ['age', 'chol', 'trestbps', 'thalach', 'oldpeak', 'ca', 'target']
     def point_biserial(x, y):
         pb = stats.pointbiserialr(x, y)
         return pb[0]
 
-    rows = []
-    for x in feats_:
-        col = []
-        for y in feats_:
-            pbs = point_biserial(df[x], df[y])
-            col.append(round(pbs, 2))
-        rows.append(col)
+    pb_matrix = np.zeros((len(num_feats), len(num_feats)))
+    for i in range(len(num_feats)):
+        for j in range(len(num_feats)):
+            pb_matrix[i, j] = point_biserial(df[num_feats[i]], df[num_feats[j]])
 
-    pbs_results = np.array(rows)
-    DF = pd.DataFrame(pbs_results, columns=df[feats_].columns, index=df[feats_].columns)
-    mask = np.triu(np.ones_like(DF, dtype=bool))
-    corr = DF.mask(mask)
-
-    f, ax = plt.subplots(figsize=(8, 5), facecolor=None)
-    cmap = sns.color_palette(mypal, as_cmap=True)
-    sns.heatmap(corr, mask=mask, cmap=cmap, vmax=1.0, vmin=-1, center=0, annot=True, square=False, linewidths=.5, cbar_kws={"shrink": 0.75})
-    ax.set_title("Cont feats vs target correlation (point-biserial)", fontsize=20, y=1.05)
-    st.pyplot(f)
+    pb_df = pd.DataFrame(pb_matrix, index=num_feats, columns=num_feats)
+    fig6, ax6 = plt.subplots(figsize=(8, 6))
+    sns.heatmap(pb_df, annot=True, cmap='coolwarm',
+    fmt=".2f", linewidths=.5)
+    ax6.set_title("Point-biserial correlation heatmap", fontsize=20)
+    st.pyplot(fig6)
 
     # Additional Graph 6: Categorical features correlation heatmap (Cramer's V)
-    def cramers_v(x, y): 
+    def cramers_v(x, y):
         confusion_matrix = pd.crosstab(x, y)
         chi2 = stats.chi2_contingency(confusion_matrix)[0]
         n = confusion_matrix.sum().sum()
         phi2 = chi2 / n
         r, k = confusion_matrix.shape
-        phi2corr = max(0, phi2 - ((k-1) * (r-1)) / (n-1))
-        rcorr = r - ((r-1)**2) / (n-1)
-        kcorr = k - ((k-1)**2) / (n-1)
-        return np.sqrt(phi2corr / min((kcorr-1), (rcorr-1)))
+        phi2corr = max(0, phi2 - ((k - 1) * (r - 1)) / (n - 1))
+        rcorr = r - ((r - 1) ** 2) / (n - 1)
+        kcorr = k - ((k - 1) ** 2) / (n - 1)
+        return np.sqrt(phi2corr / min((kcorr - 1), (rcorr - 1)))
 
-    data_ = df[cat_feats]
-    rows = []
-    for x in data_:
-        col = []
-        for y in data_:
-            cramers = cramers_v(data_[x], data_[y])
-            col.append(round(cramers, 2))
-        rows.append(col)
+    cramers_matrix = np.zeros((len(cat_feats), len(cat_feats)))
+    for i in range(len(cat_feats)):
+        for j in range(len(cat_feats)):
+            cramers_matrix[i, j] = cramers_v(df[cat_feats[i]], df[cat_feats[j]])
 
-    cramers_results = np.array(rows)
-    df_ = pd.DataFrame(cramers_results, columns=data_.columns, index=data_.columns)
-
-    mypal_1 = ['#FC05FB', '#FEAEFE', '#FCD2FC', '#F3FEFA', '#B4FFE4', '#3FFEBA', '#FC05FB', '#FEAEFE', '#FCD2FC']
-    mask = np.triu(np.ones_like(df_, dtype=bool))
-    corr = df_.mask(mask)
-    f, ax = plt.subplots(figsize=(10, 6), facecolor=None)
-    cmap = sns.color_palette(mypal_1, as_cmap=True)
-    sns.heatmap(corr, mask=mask, cmap=cmap, vmax=1.0, vmin=0, center=0, annot=True, square=False, linewidths=.01, cbar_kws={"shrink": 0.75})
-    ax.set_title("Categorical Features Correlation (Cramer's V)", fontsize=20, y=1.05)
-    st.pyplot(f)
+    cramers_df = pd.DataFrame(cramers_matrix, index=cat_feats, columns=cat_feats)
+    fig7, ax7 = plt.subplots(figsize=(10, 8))
+    sns.heatmap(cramers_df, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5)
+    ax7.set_title("Categorical features correlation (Cramer's V)", fontsize=20)
+    st.pyplot(fig7)
 
 elif choice == "Predict":
     st.markdown('<h2 class="subheader">Predict Heart Disease</h2>', unsafe_allow_html=True)
     st.write("Please input the following features to get a prediction:")
 
-    age = st.number_input("Age", min_value=1, max_value=120, value=25)
-    sex = st.selectbox("Sex", ["Male", "Female"])
-    cp = st.selectbox("Chest Pain Type", [0, 1, 2, 3])
-    trestbps = st.number_input("Resting Blood Pressure", min_value=80, max_value=200, value=120)
-    chol = st.number_input("Cholesterol", min_value=100, max_value=400, value=200)
-    fbs = st.selectbox("Fasting Blood Sugar > 120 mg/dl", [0, 1])
-    restecg = st.selectbox("Resting ECG", [0, 1, 2])
+    age = st.number_input("Age (in years)", min_value=1, max_value=120, value=25)
+    sex = st.selectbox("Sex", ["Female", "Male"])
+    cp = st.selectbox("Chest Pain Type", ["Typical Angina", "Atypical Angina", "Non-Anginal Pain", "Asymptomatic"])
+    trestbps = st.number_input("Resting Blood Pressure (mm Hg)", min_value=80, max_value=200, value=120)
+    chol = st.number_input("Cholesterol (mg/dl)", min_value=100, max_value=400, value=200)
+    fbs = st.selectbox("Fasting Blood Sugar > 120 mg/dl", ["False", "True"])
+    restecg = st.selectbox("Resting ECG", ["Normal", "ST-T Wave Abnormality", "Left Ventricular Hypertrophy"])
     thalach = st.number_input("Max Heart Rate Achieved", min_value=60, max_value=220, value=150)
-    exang = st.selectbox("Exercise Induced Angina", [0, 1])
+    exang = st.selectbox("Exercise Induced Angina", ["No", "Yes"])
     oldpeak = st.number_input("ST Depression Induced by Exercise", min_value=0.0, max_value=10.0, value=1.0)
-    slope = st.selectbox("Slope of Peak Exercise ST Segment", [0, 1, 2])
+    slope = st.selectbox("Slope of Peak Exercise ST Segment", ["Upsloping", "Flat", "Downsloping"])
     ca = st.number_input("Number of Major Vessels Colored by Fluoroscopy", min_value=0, max_value=3, value=0)
-    thal = st.selectbox("Thalassemia", [0, 1, 2, 3])
+    thal = st.selectbox("Thalassemia", ["Normal", "Fixed Defect", "Reversable Defect"])
 
-    input_features = [age, 1 if sex == "Male" else 0, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal]
-    input_features_df = pd.DataFrame([input_features], columns=X.columns)
-    input_features_scaled = scaler.transform(input_features_df)
+    # Mapping categorical values to numerical
+    sex_mapping = {"Female": 0, "Male": 1}
+    cp_mapping = {"Typical Angina": 0, "Atypical Angina": 1, "Non-Anginal Pain": 2, "Asymptomatic": 3}
+    fbs_mapping = {"False": 0, "True": 1}
+    restecg_mapping = {"Normal": 0, "ST-T Wave Abnormality": 1, "Left Ventricular Hypertrophy": 2}
+    exang_mapping = {"No": 0, "Yes": 1}
+    slope_mapping = {"Upsloping": 0, "Flat": 1, "Downsloping": 2}
+    thal_mapping = {"Normal": 2, "Fixed Defect": 1, "Reversable Defect": 3}
+
+    # Transform user inputs to numerical values
+    sex = sex_mapping[sex]
+    cp = cp_mapping[cp]
+    fbs = fbs_mapping[fbs]
+    restecg = restecg_mapping[restecg]
+    exang = exang_mapping[exang]
+    slope = slope_mapping[slope]
+    thal = thal_mapping[thal]
+
+    # Prepare input features for prediction
+    input_features = np.array([age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal]).reshape(1, -1)
+    input_features_scaled = scaler.transform(input_features)
 
     if st.button("Predict"):
         prediction = svm_model.predict(input_features_scaled)
