@@ -1,4 +1,3 @@
-from flask import Flask, render_template, request, jsonify
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
