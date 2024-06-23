@@ -1,6 +1,7 @@
 reqs
 Scikit-Learn 
 matplotlib
+seaborn
 
 
 
