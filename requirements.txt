@@ -1,0 +1,11 @@
+Flask
+scikit-learn
+pandas 
+matplotlib
+seaborn 
+numpy 
+io
+base64
+sqlite3
+streamlit 
+scipy 
