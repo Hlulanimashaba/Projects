@@ -68,6 +68,17 @@ st.markdown("""
         border-radius: 5px;
         cursor: pointer;
     }
+    .footer {
+        font-size: 12px;
+        color: #777;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        text-align: center;
+        padding: 10px;
+        background-color: #f5f5f5;
+        border-top: 1px solid #ddd;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -252,4 +263,8 @@ elif choice == "Predict":
         result = "Heart Disease" if prediction[0] == 1 else "No Heart Disease"
         st.success(f"The model predicts: {result}")
 
+# Close the main div
 st.markdown('</div>', unsafe_allow_html=True)
+
+# Footer
+st.markdown('<div class="footer">Developed by Mashaba Hlulani Charles</div>', unsafe_allow_html=True)
